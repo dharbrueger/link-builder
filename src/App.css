@@ -9,6 +9,25 @@
   padding: 2em;
 }
 
+.linkControls {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.potentialCollocation {
+  cursor: pointer;
+}
+
+.potentialCollocation:hover {
+  color: #fff;
+}
+
+.linkWord {
+  margin: 0 0.5rem;
+  font-size: 1.5rem;
+}
+
 ul {
   list-style: none;
   padding: 0;

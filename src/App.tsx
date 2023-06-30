@@ -16,9 +16,15 @@ type CollocationsResponse = {
 
 function App() {
   const [query, setQuery] = useState("");
-  const [potentialCollocations, setPotentialCollocations] = useState<CollocationList>([]);
+  const [potentialCollocations, setPotentialCollocations] =
+    useState<CollocationList>([]);
+  const [linkWords, setLinkWords] = useState<CollocationList>([]);
+  const activeLink = linkWords.length !== 0;
+  const impossibleLink = activeLink && potentialCollocations.length === 0;
 
-  const extractPotentialCollocations = (response: CollocationsResponse[]): string[] => {
+  const extractPotentialCollocations = (
+    response: CollocationsResponse[]
+  ): string[] => {
     const potentialCollocations: string[] = [];
 
     response.forEach((potentialCollocation) => {
@@ -33,15 +39,17 @@ function App() {
     return potentialCollocations;
   };
 
-  const getWord = async (): Promise<CollocationsResponse | undefined> => {
-    if (!query) return;
+  const getLinkableWords = async (
+    word = ""
+  ): Promise<CollocationsResponse | undefined> => {
+    if (!query && !word) return;
 
     const options = {
       method: "GET",
       url: "https://linguatools-english-collocations.p.rapidapi.com/bolls/v2",
       params: {
         lang: "en",
-        query,
+        query: word || query,
         max_results: "25",
         relation: "N:nn:N",
         pos: "N",
@@ -55,10 +63,24 @@ function App() {
 
     try {
       const response = await axios.request(options);
+      if (query && !activeLink) {
+        setLinkWords([query]);
+      }
+
       setPotentialCollocations(extractPotentialCollocations(response.data));
     } catch (error) {
       console.error(error);
     }
+  };
+
+  const resetLink = () => {
+    setPotentialCollocations([]);
+    setLinkWords([]);
+  };
+
+  const addLinkWord = (word: string) => {
+    setLinkWords([...linkWords, `- ${word}`]);
+    getLinkableWords(word);
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -69,24 +91,51 @@ function App() {
   return (
     <>
       <h1>li-nk builder</h1>
+      {activeLink &&
+        linkWords.map((word, index) => (
+          <span key={index} className="linkWord">
+            {word}
+          </span>
+        ))}
       <div>
-        <input
-          type="text"
-          value={query}
-          onChange={handleInputChange}
-          placeholder="Enter a word"
-        />
-        <div style={{marginTop: '50px'}}>
-          <button onClick={getWord} style={{marginRight: '20px'}}>Get Linkable Words</button>
-        </div>
+        {!activeLink && !impossibleLink && (
+          <>
+            <input
+              type="text"
+              value={query}
+              onChange={handleInputChange}
+              placeholder="Enter a word"
+            />
+            <div style={{ marginTop: "50px" }}>
+              <button
+                onClick={() => getLinkableWords()}
+                disabled={!query}
+                style={{ marginRight: "20px" }}
+              >
+                Get Linkable Words
+              </button>
+            </div>
+          </>
+        )}
       </div>
       <div className="card">
         <ul>
           {potentialCollocations.map((collocation, index) => (
-            <li key={index}>{collocation}</li>
+            <li
+              key={index}
+              onClick={() => addLinkWord(collocation)}
+              className="potentialCollocation"
+            >
+              {collocation}
+            </li>
           ))}
         </ul>
       </div>
+      {activeLink && (
+          <div className="linkControls">
+            <button onClick={resetLink}>Reset Link</button>
+          </div>
+        )}
     </>
   );
 }
