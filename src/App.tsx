@@ -3,9 +3,9 @@ import "./App.css";
 import axios from "axios";
 
 type TargetValue = string;
-type WordList = string[];
+type CollocationList = string[];
 
-type WordResponse = {
+type CollocationsResponse = {
   id: number;
   collocation: string;
   relation: string;
@@ -16,33 +16,24 @@ type WordResponse = {
 
 function App() {
   const [query, setQuery] = useState("");
-  // const [wordList, setWordList] = useState<WordList>([""]);
-  const [potentialWords, setPotentialWords] = useState<WordList>([""]);
+  const [potentialCollocations, setPotentialCollocations] = useState<CollocationList>([]);
 
-  // const addWordToList = async () => {
-  //   if (!query) return;
+  const extractPotentialCollocations = (response: CollocationsResponse[]): string[] => {
+    const potentialCollocations: string[] = [];
 
-  //   const updatedWordList = [...wordList, query];
-  //   setWordList(updatedWordList);
-  //   setQuery("");
-  // };
-
-  const extractWords = (response: WordResponse[]) => {
-    const potentialWords: string[] = [];
-
-    response.forEach((word) => {
-      const { basisword, collocation } = word;
+    response.forEach((potentialCollocation) => {
+      const { basisword, collocation } = potentialCollocation;
       const collocationWords = collocation.split(" ");
 
       if (collocationWords[0] === basisword) {
-        potentialWords.push(collocationWords[1]);
+        potentialCollocations.push(collocationWords[1]);
       }
     });
 
-    setPotentialWords(potentialWords);
+    return potentialCollocations;
   };
 
-  const getWord = async (): Promise<WordResponse | undefined> => {
+  const getWord = async (): Promise<CollocationsResponse | undefined> => {
     if (!query) return;
 
     const options = {
@@ -54,6 +45,7 @@ function App() {
         max_results: "25",
         relation: "N:nn:N",
         pos: "N",
+        min_sig: "180",
       },
       headers: {
         "X-RapidAPI-Key": import.meta.env.VITE_LINGUA_TOOLS_KEY,
@@ -63,7 +55,7 @@ function App() {
 
     try {
       const response = await axios.request(options);
-      extractWords(response.data);
+      setPotentialCollocations(extractPotentialCollocations(response.data));
     } catch (error) {
       console.error(error);
     }
@@ -71,7 +63,6 @@ function App() {
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { value }: { value: TargetValue } = e.target;
-    if (!value) return;
     setQuery(value);
   };
 
@@ -87,13 +78,12 @@ function App() {
         />
         <div style={{marginTop: '50px'}}>
           <button onClick={getWord} style={{marginRight: '20px'}}>Get Linkable Words</button>
-          {/* <button onClick={addWordToList}>Add Word</button> */}
         </div>
       </div>
       <div className="card">
         <ul>
-          {potentialWords.map((word, index) => (
-            <li key={index}>{word}</li>
+          {potentialCollocations.map((collocation, index) => (
+            <li key={index}>{collocation}</li>
           ))}
         </ul>
       </div>
