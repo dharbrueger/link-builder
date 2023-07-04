@@ -1,6 +1,8 @@
 import { ChangeEvent, useState } from "react";
 import "./App.css";
 import axios from "axios";
+import { LinguisticPatterns } from "./constants/LinguisticPatterns";
+import RelationSelector from "./RelationSelector";
 
 type TargetValue = string;
 type CollocationList = string[];
@@ -15,11 +17,14 @@ type CollocationsResponse = {
 };
 
 type SliderProps = {
-  sliderValue: number;
-  handleSliderChange: (event: ChangeEvent<HTMLInputElement>) => void;
-}
+	sliderValue: number;
+	handleSliderChange: (event: ChangeEvent<HTMLInputElement>) => void;
+};
 
-const SliderComponent: React.FC<SliderProps> = ({ sliderValue, handleSliderChange}) => {
+const SliderComponent: React.FC<SliderProps> = ({
+	sliderValue,
+	handleSliderChange,
+}) => {
 	return (
 		<div style={{ marginTop: "50px" }}>
 			<input
@@ -34,27 +39,35 @@ const SliderComponent: React.FC<SliderProps> = ({ sliderValue, handleSliderChang
 	);
 };
 
-function App() {
+function LinkBuilder() {
 	const [query, setQuery] = useState("");
 	const [potentialCollocations, setPotentialCollocations] =
 		useState<CollocationList>([]);
 	const [linkWords, setLinkWords] = useState<CollocationList>([]);
 	const [sliderValue, setSliderValue] = useState(5000);
+	const [selectedRelation, setSelectedRelation] = useState("");
 
 	const activeLink = linkWords.length !== 0;
 	const impossibleLink = activeLink && potentialCollocations.length === 0;
 
-	const extractPotentialCollocations = (
+	const parseCollocationResponse = (
 		response: CollocationsResponse[]
 	): string[] => {
 		const potentialCollocations: string[] = [];
 
 		response.forEach((potentialCollocation) => {
-			const { basisword, collocation } = potentialCollocation;
+			const { basisword, collocation, relation } = potentialCollocation;
 			const collocationWords = collocation.split(" ");
 
-			if (collocationWords[0] === basisword) {
-				potentialCollocations.push(collocationWords[1]);
+			//need to add logic for all relations or most likely we 
+			//need to just filter out the ones that don't work very well
+			switch (relation) {
+				case LinguisticPatterns.N_NN_N:
+					if (collocationWords[0] === basisword) potentialCollocations.push(collocationWords[1]);
+					break;
+				default:
+					potentialCollocations.push(collocationWords[0]);
+					break;
 			}
 		});
 
@@ -73,8 +86,7 @@ function App() {
 				lang: "en",
 				query: word || query,
 				max_results: "25",
-				relation: "N:nn:N",
-				pos: "N",
+				relation: selectedRelation,
 				min_sig: sliderValue.toString(),
 			},
 			headers: {
@@ -89,7 +101,7 @@ function App() {
 				setLinkWords([query]);
 			}
 
-			setPotentialCollocations(extractPotentialCollocations(response.data));
+			setPotentialCollocations(parseCollocationResponse(response.data));
 		} catch (error) {
 			console.error(error);
 		}
@@ -116,6 +128,11 @@ function App() {
 		setSliderValue(parsedValue);
 	};
 
+	const handleRelationChange = (e: ChangeEvent<HTMLSelectElement>) => {
+		const { value }: { value: TargetValue } = e.target;
+		setSelectedRelation(value);
+	};
+
 	return (
 		<>
 			<h1>li-nk builder</h1>
@@ -135,7 +152,14 @@ function App() {
 							placeholder="Enter a word"
 						/>
 
-            <SliderComponent sliderValue={sliderValue} handleSliderChange={handleSliderChange}/>
+						<SliderComponent
+							sliderValue={sliderValue}
+							handleSliderChange={handleSliderChange}
+						/>
+
+						<RelationSelector 
+							selectedRelation={selectedRelation}
+							handleRelationChange={handleRelationChange}/>
 
 						<div style={{ marginTop: "50px" }}>
 							<button
@@ -171,4 +195,4 @@ function App() {
 	);
 }
 
-export default App;
+export default LinkBuilder;
